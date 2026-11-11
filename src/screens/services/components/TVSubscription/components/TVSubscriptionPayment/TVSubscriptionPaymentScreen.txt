@@ -1,0 +1,404 @@
+import React, { useMemo, useState } from "react";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import type { RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+type CountryCode = "NE" | "NG";
+
+interface TVPlan {
+  id: string;
+  name: string;
+  subtitle: string;
+  price: number;
+}
+
+interface TVConfig {
+  countryCode: CountryCode;
+  providerName: string;
+  serviceType: string;
+  inputLabel: string;
+  inputBadge: string;
+  placeholder: string;
+  walletLabel: string;
+  currency: string;
+  currencyPosition: "prefix" | "suffix";
+  fee: number;
+  dailyLimitTotal: number;
+  dailyLimitUsed: number;
+  accentBg: string;
+  accentIconColor: string;
+  plans: TVPlan[];
+}
+
+type TVPaymentParamList = {
+  TVSubscriptionPayment:
+    | {
+        country?: CountryCode;
+        providerConfig?: TVConfig;
+        initialSmartcard?: string;
+      }
+    | undefined;
+  ConfirmPayment: {
+    country: CountryCode;
+    provider: string;
+    smartcardNumber: string;
+    plan: TVPlan;
+    wallet: string;
+    fee: number;
+    total: number;
+    currency: string;
+  };
+};
+
+type TVPaymentRoute = RouteProp<TVPaymentParamList, "TVSubscriptionPayment">;
+type TVPaymentNavigation = NativeStackNavigationProp<
+  TVPaymentParamList,
+  "TVSubscriptionPayment"
+>;
+
+// Country & Provider presets for both Niger (XOF) and Nigeria (NGN)
+const TV_CONFIGS: Record<CountryCode, TVConfig> = {
+  NE: {
+    countryCode: "NE",
+    providerName: "Canal+ Niger",
+    serviceType: "TV subscription",
+    inputLabel: "SMARTCARD / IUC NUMBER",
+    inputBadge: "IUC",
+    placeholder: "0235425885",
+    walletLabel: "XOF wallet",
+    currency: "FCFA",
+    currencyPosition: "suffix", // e.g., 18,000 FCFA
+    fee: 0,
+    dailyLimitTotal: 5000000,
+    dailyLimitUsed: 1309.8,
+    accentBg: "bg-[#FDEBD7]",
+    accentIconColor: "#D97724",
+    plans: [
+      {
+        id: "access",
+        name: "Access",
+        subtitle: "Standard bouquet",
+        price: 9900,
+      },
+      {
+        id: "evasion",
+        name: "Evasion",
+        subtitle: "Full entertainment",
+        price: 18000,
+      },
+      {
+        id: "tout-canal",
+        name: "Tout Canal",
+        subtitle: "All channels",
+        price: 32000,
+      },
+    ],
+  },
+  NG: {
+    countryCode: "NG",
+    providerName: "DStv Nigeria",
+    serviceType: "TV subscription",
+    inputLabel: "SMARTCARD / IUC NUMBER",
+    inputBadge: "IUC",
+    placeholder: "7047703551",
+    walletLabel: "NGN wallet",
+    currency: "₦",
+    currencyPosition: "prefix", // e.g., ₦15,700
+    fee: 0,
+    dailyLimitTotal: 5000000,
+    dailyLimitUsed: 45000,
+    accentBg: "bg-[#E3F5EA]",
+    accentIconColor: "#0C8C3E",
+    plans: [
+      {
+        id: "yanga",
+        name: "DStv Yanga",
+        subtitle: "Family entertainment",
+        price: 5100,
+      },
+      {
+        id: "confam",
+        name: "DStv Confam",
+        subtitle: "Full entertainment & sports",
+        price: 9300,
+      },
+      {
+        id: "compact",
+        name: "DStv Compact",
+        subtitle: "Premium sports & movies",
+        price: 15700,
+      },
+    ],
+  },
+};
+
+// Helper to format FCFA vs Naira cleanly
+function formatAmount(
+  amount: number,
+  currency: string,
+  position: "prefix" | "suffix" = "suffix",
+  showDecimals = false,
+) {
+  const formattedNumber = amount.toLocaleString("en-US", {
+    minimumFractionDigits: showDecimals ? 2 : 0,
+    maximumFractionDigits: showDecimals ? 2 : 0,
+  });
+
+  return position === "prefix"
+    ? `${currency}${formattedNumber}`
+    : `${formattedNumber} ${currency}`;
+}
+
+interface TVSubscriptionPaymentScreenProps {
+  route: TVPaymentRoute;
+  navigation: TVPaymentNavigation;
+}
+
+export default function TVSubscriptionPaymentScreen({
+  route,
+  navigation,
+}: TVSubscriptionPaymentScreenProps) {
+  // Supports passing `country: 'NE' | 'NG'` or a full custom `providerConfig` via navigation params
+  const country = route?.params?.country || "NE";
+  const config = route?.params?.providerConfig || TV_CONFIGS[country];
+
+  const [smartcardNumber, setSmartcardNumber] = useState(
+    route?.params?.initialSmartcard || "",
+  );
+  const [selectedPlanId, setSelectedPlanId] = useState(
+    config.plans[1]?.id || config.plans[0]?.id,
+  );
+
+  const selectedPlan = useMemo<TVPlan>(() => {
+    const plan =
+      config.plans.find((p: TVPlan) => p.id === selectedPlanId) ??
+      config.plans[0];
+    if (!plan) {
+      throw new Error("TV provider has no subscription plans.");
+    }
+    return plan;
+  }, [config.plans, selectedPlanId]);
+
+  const totalDebited = selectedPlan.price + config.fee;
+  const remainingLimit = Math.max(
+    0,
+    config.dailyLimitTotal - config.dailyLimitUsed,
+  );
+  const usedPercentage = Math.min(
+    100,
+    Math.max(2, (config.dailyLimitUsed / config.dailyLimitTotal) * 100),
+  );
+
+  const handleContinue = () => {
+    navigation?.navigate("ConfirmPayment", {
+      country: config.countryCode,
+      provider: config.providerName,
+      smartcardNumber,
+      plan: selectedPlan,
+      wallet: config.walletLabel,
+      fee: config.fee,
+      total: totalDebited,
+      currency: config.currency,
+    });
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-[#FAF9F6]">
+      {/* Header */}
+      <View className="flex-row items-center px-5 pt-3 pb-4">
+        <Pressable
+          onPress={() => navigation?.goBack()}
+          className="w-9 h-9 rounded-full bg-[#F2F0EB] items-center justify-center mr-3.5"
+        >
+          <Ionicons name="arrow-back" size={18} color="#1A1A1A" />
+        </Pressable>
+        <Text className="text-[19px] font-bold text-[#1A1A1A]">
+          Payment details
+        </Text>
+      </View>
+
+      <ScrollView
+        className="flex-1 px-5"
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Provider Banner */}
+        <View className="flex-row items-center bg-[#F3F1EC] rounded-2xl p-4 mb-6">
+          <View
+            className={`w-11 h-11 rounded-xl items-center justify-center mr-3.5 ${config.accentBg}`}
+          >
+            <Ionicons
+              name="tv-outline"
+              size={20}
+              color={config.accentIconColor}
+            />
+          </View>
+          <View>
+            <Text className="text-[15px] font-bold text-[#1A1A1A]">
+              {config.providerName}
+            </Text>
+            <Text className="text-xs text-[#78756E] mt-0.5">
+              {config.serviceType}
+            </Text>
+          </View>
+        </View>
+
+        {/* Smartcard / IUC Input */}
+        <Text className="text-[11px] font-bold tracking-wider text-[#6E6B64] uppercase mb-2">
+          {config.inputLabel}
+        </Text>
+        <View className="flex-row items-center justify-between bg-white border border-[#ECE9E2] rounded-2xl px-4 h-14 mb-6">
+          <TextInput
+            value={smartcardNumber}
+            onChangeText={setSmartcardNumber}
+            keyboardType="number-pad"
+            placeholder={config.placeholder}
+            placeholderTextColor="#A3A098"
+            className="flex-1 text-[16px] font-medium text-[#1A1A1A]"
+          />
+          <Text className="text-xs font-semibold text-[#9E9B93] ml-2">
+            {config.inputBadge}
+          </Text>
+        </View>
+
+        {/* Plan Selector */}
+        <Text className="text-[11px] font-bold tracking-wider text-[#6E6B64] uppercase mb-2.5">
+          CHOOSE A PLAN
+        </Text>
+        <View className="gap-3 mb-6">
+          {config.plans.map((plan) => {
+            const isSelected = plan.id === selectedPlan.id;
+
+            return (
+              <Pressable
+                key={plan.id}
+                onPress={() => setSelectedPlanId(plan.id)}
+                className={`flex-row items-center justify-between rounded-2xl px-4 py-4 border ${
+                  isSelected
+                    ? "bg-[#F0FAF4] border-[#22A055] border-[1.5px]"
+                    : "bg-white border-[#ECE9E2]"
+                }`}
+              >
+                <View>
+                  <Text className="text-[15px] font-bold text-[#1A1A1A]">
+                    {plan.name}
+                  </Text>
+                  <Text className="text-xs text-[#78756E] mt-0.5">
+                    {plan.subtitle}
+                  </Text>
+                </View>
+
+                <Text className="text-[15px] font-bold text-[#1A1A1A]">
+                  {formatAmount(
+                    plan.price,
+                    config.currency,
+                    config.currencyPosition,
+                  )}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Payment Summary */}
+        <View className="bg-white border border-[#ECE9E2] rounded-2xl p-4 mb-4">
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-[14px] text-[#78756E]">Pay from</Text>
+            <Text className="text-[14px] font-semibold text-[#1A1A1A]">
+              {config.walletLabel}
+            </Text>
+          </View>
+
+          <View className="flex-row justify-between items-center pb-3.5 border-b border-[#F2EFE9]">
+            <Text className="text-[14px] text-[#78756E]">Fee</Text>
+            <Text className="text-[14px] font-semibold text-[#1A1A1A]">
+              {formatAmount(
+                config.fee,
+                config.currency,
+                config.currencyPosition,
+              )}
+            </Text>
+          </View>
+
+          <View className="flex-row justify-between items-center pt-3.5">
+            <Text className="text-[15px] font-bold text-[#1A1A1A]">
+              Total debited
+            </Text>
+            <Text className="text-[16px] font-extrabold text-[#00994C]">
+              {formatAmount(
+                totalDebited,
+                config.currency,
+                config.currencyPosition,
+              )}
+            </Text>
+          </View>
+        </View>
+
+        {/* Daily Limit Indicator */}
+        <View className="bg-white border border-[#ECE9E2] rounded-2xl p-4 mb-4">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-row items-center gap-1.5">
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={15}
+                color="#00994C"
+              />
+              <Text className="text-[13px] font-bold text-[#1A1A1A]">
+                Daily limit
+              </Text>
+            </View>
+            <Text className="text-[11px] text-[#78756E]">
+              {formatAmount(
+                config.dailyLimitUsed,
+                config.currency,
+                config.currencyPosition,
+                true,
+              )}{" "}
+              of{" "}
+              {formatAmount(
+                config.dailyLimitTotal,
+                config.currency,
+                config.currencyPosition,
+              )}{" "}
+              used today
+            </Text>
+          </View>
+
+          <View className="w-full h-1.5 bg-[#ECE9E2] rounded-full overflow-hidden mb-2.5">
+            <View
+              style={{ width: `${usedPercentage}%` }}
+              className="h-full bg-[#00994C] rounded-full"
+            />
+          </View>
+
+          <Text className="text-[11px] text-[#8A877F]">
+            {formatAmount(
+              remainingLimit,
+              config.currency,
+              config.currencyPosition,
+              true,
+            )}{" "}
+            left today
+          </Text>
+        </View>
+      </ScrollView>
+
+      {/* Bottom Action */}
+      <View className="px-5 pt-2 pb-3 bg-[#FAF9F6]">
+        <Pressable
+          disabled={!smartcardNumber.trim()}
+          onPress={handleContinue}
+          className={`w-full h-13 rounded-2xl items-center justify-center ${
+            smartcardNumber.trim()
+              ? "bg-[#00994C] active:bg-[#007F3F]"
+              : "bg-[#A7D7BE]"
+          }`}
+        >
+          <Text className="text-white text-[16px] font-bold">Continue</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
