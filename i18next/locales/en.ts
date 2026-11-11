@@ -387,6 +387,10 @@ const en = {
         incorrectOTP: "That code is not correct",
         missMatchPIN: "PINs do not match",
         emptyName: "Please enter your name",
+        incorrectPin: "That PIN is incorrect. Please try again.",
+        accountNotFound: "We could not find an account with that number.",
+        accountAlreadyExists:
+          "An account with this number already exists. Try logging in instead.",
       },
     },
     welcome: "Welcome",
