@@ -9,8 +9,8 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-export type WalletCurrency = "XOF" | "NGN";
+import type { WalletCurrency } from "../../../../types/money";
+import { formatMoney, sanitizeDecimalInput } from "../../../../utils/money";
 
 interface RatesAndFeesScreenProps {
   defaultCurrency?: WalletCurrency;
@@ -42,15 +42,6 @@ export default function RatesAndFeesScreen({
         utility: 2000,
       };
 
-  const formatMoney = (val: number) => {
-    const hasDecimals = val % 1 !== 0;
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: hasDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return isXof ? `${formattedNum} FCFA` : `₦${formattedNum}`;
-  };
-
   // Quick Fee Estimate Calculations (with caps enforced)
   const numericAmount = parseFloat(rawEstimateAmount) || 0;
   const sendFee =
@@ -67,10 +58,8 @@ export default function RatesAndFeesScreen({
       : 0;
 
   const handleAmountChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9.]/g, "");
-    const parts = cleaned.split(".");
-    if (parts.length > 2) return;
-    setRawEstimateAmount(cleaned);
+    const cleaned = sanitizeDecimalInput(text);
+    if (cleaned !== null) setRawEstimateAmount(cleaned);
   };
 
   return (
@@ -222,7 +211,7 @@ export default function RatesAndFeesScreen({
                 0.6%
               </Text>
               <Text className="text-[10px] text-[#666666] mt-0.5">
-                Capped at {formatMoney(caps.send)}
+                Capped at {formatMoney(caps.send, selectedCurrency)}
               </Text>
             </View>
           </View>
@@ -251,7 +240,7 @@ export default function RatesAndFeesScreen({
                 0.8%
               </Text>
               <Text className="text-[10px] text-[#666666] mt-0.5">
-                Capped at {formatMoney(caps.convert)}
+                Capped at {formatMoney(caps.convert, selectedCurrency)}
               </Text>
             </View>
           </View>
@@ -282,7 +271,7 @@ export default function RatesAndFeesScreen({
                   0.5%
                 </Text>
                 <Text className="text-[10px] text-[#666666] mt-0.5">
-                  Capped at {formatMoney(caps.cashOut)}
+                  Capped at {formatMoney(caps.cashOut, selectedCurrency)}
                 </Text>
               </View>
             </View>
@@ -362,7 +351,7 @@ export default function RatesAndFeesScreen({
                   1%
                 </Text>
                 <Text className="text-[10px] text-[#666666] mt-0.5">
-                  Capped at {formatMoney(caps.utility)}
+                  Capped at {formatMoney(caps.utility, selectedCurrency)}
                 </Text>
               </View>
             </View>
@@ -404,21 +393,21 @@ export default function RatesAndFeesScreen({
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs text-[#666666]">➤ Send</Text>
                 <Text className="text-xs font-bold text-[#1A1A1A]">
-                  {formatMoney(sendFee)}
+                  {formatMoney(sendFee, selectedCurrency)}
                 </Text>
               </View>
 
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs text-[#666666]">⇄ Convert</Text>
                 <Text className="text-xs font-bold text-[#1A1A1A]">
-                  {formatMoney(convertFee)}
+                  {formatMoney(convertFee, selectedCurrency)}
                 </Text>
               </View>
 
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs text-[#666666]">⊖ Cash out</Text>
                 <Text className="text-xs font-bold text-[#1A1A1A]">
-                  {formatMoney(cashOutFee)}
+                  {formatMoney(cashOutFee, selectedCurrency)}
                 </Text>
               </View>
             </View>
