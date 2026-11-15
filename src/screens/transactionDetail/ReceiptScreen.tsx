@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export type ReceiptDirection = "sent" | "received";
-export type WalletCurrency = "NGN" | "XOF";
+import type { WalletCurrency } from "../../types/money";
 
 export interface TransactionReceiptData {
   id: string;
