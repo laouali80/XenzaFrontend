@@ -10,8 +10,8 @@ import {
 } from "react-native";
 import { useTx } from "../../../../utils/tx";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-export type WalletCurrency = "XOF" | "NGN";
+import type { WalletCurrency } from "../../../../types/money";
+import { formatMoney } from "../../../../utils/money";
 
 export interface SenderWallet {
   id: string;
@@ -87,15 +87,6 @@ export default function SendAmountScreen({
   }, [recipientName]);
 
   // Format currency helper matching your screenshots
-  const formatMoney = (val: number, currency: WalletCurrency) => {
-    const hasDecimals = val % 1 !== 0;
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: hasDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return currency === "XOF" ? `${formattedNum} FCFA` : `₦${formattedNum}`;
-  };
-
   // Calculations (0.6% fee matching 256 -> 1.54 FCFA in screenshot 1)
   const numericAmount = parseFloat(rawAmount) || 0;
   const fee =
