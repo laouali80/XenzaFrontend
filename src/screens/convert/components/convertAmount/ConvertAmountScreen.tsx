@@ -10,8 +10,8 @@ import {
 } from "react-native";
 import { useTx } from "../../../../utils/tx";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-export type WalletCurrency = "XOF" | "NGN";
+import type { WalletCurrency } from "../../../../types/money";
+import { formatMoney, sanitizeDecimalInput } from "../../../../utils/money";
 
 interface ConvertAmountScreenProps {
   fromCurrency?: WalletCurrency;
@@ -54,15 +54,6 @@ export default function ConvertAmountScreen({
 
   const conversionMultiplier = isXofToNgn ? 2.4 : 0.42;
 
-  const formatMoney = (val: number, currency: WalletCurrency) => {
-    const hasDecimals = val % 1 !== 0;
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: hasDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return currency === "XOF" ? `${formattedNum} FCFA` : `₦${formattedNum}`;
-  };
-
   // Calculations (0.8% fee matching 1,000 -> 8 fee & 1,008 total debited)
   const numericAmount = parseFloat(rawAmount) || 0;
   const fee =
@@ -85,10 +76,8 @@ export default function ConvertAmountScreen({
     totalDebited <= activeDailyLimit - activeUsedToday;
 
   const handleAmountChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9.]/g, "");
-    const parts = cleaned.split(".");
-    if (parts.length > 2) return;
-    setRawAmount(cleaned);
+    const cleaned = sanitizeDecimalInput(text);
+    if (cleaned !== null) setRawAmount(cleaned);
   };
 
   return (

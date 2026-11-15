@@ -1,8 +1,8 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-export type WalletCurrency = "XOF" | "NGN";
+import type { WalletCurrency } from "../../../../types/money";
+import { formatMoney } from "../../../../utils/money";
 
 interface ReviewConversionScreenProps {
   fromCurrency?: WalletCurrency;
@@ -27,15 +27,6 @@ export default function ReviewConversionScreen({
   onBack,
   onConfirm,
 }: ReviewConversionScreenProps) {
-  const formatMoney = (val: number, currency: WalletCurrency) => {
-    const hasDecimals = val % 1 !== 0;
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: hasDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return currency === "XOF" ? `${formattedNum} FCFA` : `₦${formattedNum}`;
-  };
-
   return (
     <SafeAreaView className="flex-1 bg-[#FCFAF7]">
       {/* Top Header Bar */}

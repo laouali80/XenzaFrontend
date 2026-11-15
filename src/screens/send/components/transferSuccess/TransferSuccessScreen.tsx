@@ -14,9 +14,11 @@ import {
   maskAccountNumber,
   shareTransactionReceiptPDF,
 } from "../../../../utils/receiptGenerator";
+import type { WalletCurrency } from "../../../../types/money";
+import { formatMoney } from "../../../../utils/money";
+import { SuccessBadge } from "../../../../components/transaction/TransactionPrimitives";
 
 export type TransferMode = "xenza_user" | "bank_account";
-export type WalletCurrency = "XOF" | "NGN";
 
 interface TransferSuccessScreenProps {
   mode?: TransferMode;
@@ -53,14 +55,6 @@ export default function TransferSuccessScreen({
     useState<boolean>(isAlreadySaved);
   const receiptImageRef = useRef<ViewShotRef>(null);
 
-  const formatMoney = (val: number, forceDecimals = false) => {
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: forceDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return currency === "XOF" ? `${formattedNum} FCFA` : `₦${formattedNum}`;
-  };
-
   // Matches "BOA Niger · 0452452" for bank vs "50242423123" for Xenza user
   const destinationDisplay =
     mode === "bank_account" && bankName
@@ -80,7 +74,7 @@ export default function TransferSuccessScreen({
       });
 
       await shareTransactionReceiptPDF({
-        amountFormatted: formatMoney(amount, true),
+        amountFormatted: formatMoney(amount, currency, true),
         status: "Successful",
         timestamp: now,
         recipientName: recipientName,
@@ -91,7 +85,7 @@ export default function TransferSuccessScreen({
         senderWalletLabel: currency === "XOF" ? "Xenza XOF" : "Xenza NGN",
         senderAccountMasked: maskAccountNumber("7071234975"), // Pass logged-in user's wallet ID
         transactionNo: referenceId,
-        feeFormatted: formatMoney(fee, true),
+        feeFormatted: formatMoney(fee, currency, true),
       });
     } catch (error) {
       console.log("error: ", error);
@@ -146,13 +140,7 @@ export default function TransferSuccessScreen({
         }}
       >
         {/* Top Green Checkmark Badge */}
-        <View className="items-center mb-5">
-          <View className="w-[72px] h-[72px] rounded-full bg-[#C7F0D8] items-center justify-center">
-            <View className="w-10 h-10 rounded-full bg-[#008744] items-center justify-center">
-              <Text className="text-white font-bold text-lg">✓</Text>
-            </View>
-          </View>
-        </View>
+        <SuccessBadge />
 
         {/* Title & Subtitle */}
         <Text className="text-[26px] font-bold text-[#1A1A1A] text-center mb-1.5">
@@ -174,7 +162,7 @@ export default function TransferSuccessScreen({
           >
             <View className="bg-[#F6F3ED] border border-[#EAE5DC] rounded-2xl py-6 px-5 items-center">
               <Text className="text-[28px] font-extrabold text-[#1A1A1A] mb-2">
-                {formatMoney(amount, false)}
+                {formatMoney(amount, currency)}
               </Text>
 
               <Text className="text-xs font-medium text-[#555555] mb-1">
@@ -182,7 +170,7 @@ export default function TransferSuccessScreen({
               </Text>
 
               <Text className="text-xs text-[#666666] mb-3.5">
-                Fee {formatMoney(fee, true)}
+                Fee {formatMoney(fee, currency, true)}
               </Text>
 
               <Text className="text-[11px] font-medium text-[#888888] tracking-wide">

@@ -1,8 +1,10 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { DetailRow } from "../../../../components/transaction/TransactionPrimitives";
+import type { WalletCurrency } from "../../../../types/money";
+import { formatMoney } from "../../../../utils/money";
 
-export type WalletCurrency = "XOF" | "NGN";
 export type ServiceCategory = "airtime" | "data" | "tv" | "utility";
 
 interface ReviewPaymentScreenProps {
@@ -28,15 +30,6 @@ export default function ReviewPaymentScreen({
   onBack,
   onConfirm,
 }: ReviewPaymentScreenProps) {
-  const formatMoney = (val: number) => {
-    const hasDecimals = val % 1 !== 0;
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: hasDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return currency === "XOF" ? `${formattedNum} FCFA` : `₦${formattedNum}`;
-  };
-
   // Adapts the account/number label cleanly across all 4 service categories
   const getRecipientLabel = () => {
     switch (category) {
@@ -79,7 +72,7 @@ export default function ReviewPaymentScreen({
             Total debited
           </Text>
           <Text className="text-[32px] font-extrabold text-[#008744] mb-1.5">
-            {formatMoney(totalDebited)}
+            {formatMoney(totalDebited, currency)}
           </Text>
           <Text className="text-xs font-medium text-[#666666]">
             {providerName}
@@ -88,44 +81,15 @@ export default function ReviewPaymentScreen({
 
         {/* Payment Details Breakdown Card */}
         <View className="bg-[#FAF8F5] border border-[#EAE5DC] rounded-2xl p-4 gap-3.5 mb-6">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs text-[#666666]">Provider</Text>
-            <Text className="text-xs font-bold text-[#1A1A1A]">
-              {providerName}
-            </Text>
-          </View>
+          <DetailRow label="Provider" value={providerName} />
 
           {bundleOrPlanName && (
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs text-[#666666]">Package</Text>
-              <Text className="text-xs font-bold text-[#1A1A1A]">
-                {bundleOrPlanName}
-              </Text>
-            </View>
+            <DetailRow label="Package" value={bundleOrPlanName} />
           )}
 
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs text-[#666666]">
-              {getRecipientLabel()}
-            </Text>
-            <Text className="text-xs font-bold text-[#1A1A1A]">
-              {recipientNumber}
-            </Text>
-          </View>
-
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs text-[#666666]">Pay from</Text>
-            <Text className="text-xs font-bold text-[#1A1A1A]">
-              {currency} wallet
-            </Text>
-          </View>
-
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs text-[#666666]">Fee</Text>
-            <Text className="text-xs font-bold text-[#1A1A1A]">
-              {formatMoney(fee)}
-            </Text>
-          </View>
+          <DetailRow label={getRecipientLabel()} value={recipientNumber} />
+          <DetailRow label="Pay from" value={`${currency} wallet`} />
+          <DetailRow label="Fee" value={formatMoney(fee, currency)} />
         </View>
 
         {/* Confirm Payment Button */}

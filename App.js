@@ -6,6 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
   Button,
+  KeyboardAvoidingView,
   Pressable,
   StyleSheet,
   Text,
@@ -52,6 +53,7 @@ import SecurityScreen from "./src/screens/menu/components/security/SecurityScree
 import HelpAndSupportScreen from "./src/screens/menu/components/helpAndSupport/HelpAndSupportScreen";
 import AboutXenzaScreen from "./src/screens/menu/components/aboutXenza/AboutXenzaScreen";
 import ReceiptScreen from "./src/screens/transactionDetail/ReceiptScreen";
+import RootNavigator from "./src/navigation/RootNavigator";
 
 const Stack = createNativeStackNavigator();
 
@@ -85,7 +87,17 @@ export default function App() {
   // return <HomeScreen />;
   return (
     <SafeAreaProvider>
-      <ReceiptScreen />
+      <KeyboardAvoidingView
+        // behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? -64 : 0}
+      >
+        <RootNavigator
+        // showSplash={showSplash}
+        // onSplashFinish={() => setShowSplash(false)}
+        />
+      </KeyboardAvoidingView>
     </SafeAreaProvider>
   );
 }

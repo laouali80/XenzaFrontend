@@ -5,8 +5,13 @@ import {
   shareTransactionReceiptPDF,
 } from "../../../../utils/receiptGenerator";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-export type WalletCurrency = "XOF" | "NGN";
+import {
+  SuccessBadge,
+  TransactionAction,
+  TransactionSummaryCard,
+} from "../../../../components/transaction/TransactionPrimitives";
+import type { WalletCurrency } from "../../../../types/money";
+import { formatMoney } from "../../../../utils/money";
 
 interface PaymentSuccessScreenProps {
   providerName?: string;
@@ -31,15 +36,6 @@ export default function PaymentSuccessScreen({
   onPayAgain,
   onBackToHome,
 }: PaymentSuccessScreenProps) {
-  const formatMoney = (val: number, forceDecimals = false) => {
-    const hasDecimals = val % 1 !== 0;
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: forceDecimals || hasDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return currency === "XOF" ? `${formattedNum} FCFA` : `₦${formattedNum}`;
-  };
-
   const handleShareReceipt = async () => {
     try {
       const now = new Date().toLocaleString("en-US", {
@@ -52,7 +48,7 @@ export default function PaymentSuccessScreen({
       });
 
       await shareTransactionReceiptPDF({
-        amountFormatted: formatMoney(amount, true),
+        amountFormatted: formatMoney(amount, currency, true),
         status: "Successful",
         timestamp: now,
         recipientName: providerName,
@@ -62,7 +58,7 @@ export default function PaymentSuccessScreen({
         senderWalletLabel: currency === "XOF" ? "Xenza XOF" : "Xenza NGN",
         senderAccountMasked: maskAccountNumber("9052393820"),
         transactionNo: referenceId,
-        feeFormatted: formatMoney(fee, true),
+        feeFormatted: formatMoney(fee, currency, true),
       });
     } catch (error) {
       Alert.alert("Error", "Unable to share receipt right now.");
@@ -97,13 +93,7 @@ export default function PaymentSuccessScreen({
         }}
       >
         {/* Top Green Checkmark Badge */}
-        <View className="items-center mb-5">
-          <View className="w-[72px] h-[72px] rounded-full bg-[#C7F0D8] items-center justify-center">
-            <View className="w-10 h-10 rounded-full bg-[#008744] items-center justify-center">
-              <Text className="text-white font-bold text-lg">✓</Text>
-            </View>
-          </View>
-        </View>
+        <SuccessBadge />
 
         {/* Title & Subtitle */}
         <Text className="text-[26px] font-bold text-[#1A1A1A] text-center mb-1.5">
@@ -114,49 +104,26 @@ export default function PaymentSuccessScreen({
         </Text>
 
         {/* Payment Summary Receipt Card */}
-        <View className="bg-[#F6F3ED] border border-[#EAE5DC] rounded-2xl py-6 px-5 items-center mb-6">
-          <Text className="text-[28px] font-extrabold text-[#1A1A1A] mb-2">
-            {formatMoney(amount)}
-          </Text>
-
-          <Text className="text-xs font-medium text-[#555555] mb-1">
-            {providerName}
-          </Text>
-
-          <Text className="text-xs font-medium text-[#555555] mb-3.5">
-            {recipientNumber}
-          </Text>
-
-          <Text className="text-[11px] font-medium text-[#888888] tracking-wide">
-            Ref {referenceId}
-          </Text>
-        </View>
+        <TransactionSummaryCard
+          amount={formatMoney(amount, currency)}
+          details={[providerName, recipientNumber]}
+          referenceId={referenceId}
+        />
 
         {/* Primary Action: View Activity */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={
-            onViewActivity ?? (() => console.log("Navigate to Activity"))
-          }
-          className="bg-[#009A49] h-[54px] rounded-xl flex-row items-center justify-center mb-3"
-        >
-          <Text className="text-white text-sm mr-2">🕒</Text>
-          <Text className="text-white text-base font-semibold">
-            View activity
-          </Text>
-        </TouchableOpacity>
+        <TransactionAction
+          label="View activity"
+          icon="🕒"
+          onPress={onViewActivity}
+        />
 
         {/* Secondary Action: Pay Again */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={onPayAgain ?? (() => console.log("Reset Services flow"))}
-          className="bg-white border border-[#E0DCD3] h-[54px] rounded-xl flex-row items-center justify-center mb-5"
-        >
-          <Text className="text-[#1A1A1A] text-sm mr-2">↻</Text>
-          <Text className="text-[#1A1A1A] text-base font-semibold">
-            Pay again
-          </Text>
-        </TouchableOpacity>
+        <TransactionAction
+          label="Pay again"
+          icon="↻"
+          onPress={onPayAgain}
+          secondary
+        />
 
         {/* Tertiary Link: Back to Home */}
         <TouchableOpacity

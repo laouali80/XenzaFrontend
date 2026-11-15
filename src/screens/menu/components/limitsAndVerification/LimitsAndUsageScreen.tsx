@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type { WalletCurrency } from "../../../../types/money";
+import { formatMoney } from "../../../../utils/money";
 
 export type KYCTier = "unverified" | "in_review" | "verified";
-export type WalletCurrency = "XOF" | "NGN";
-
 export interface CurrencyUsageMetrics {
   largestSingleToday: number;
   totalSentToday: number;
@@ -87,17 +87,6 @@ export default function LimitsAndUsageScreen({
 
   const limits = TIER_LIMITS[tier][activeCurrency];
   const usage = usageByCurrency[activeCurrency];
-
-  const formatMoney = (val: number) => {
-    const hasDecimals = val % 1 !== 0;
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: hasDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return activeCurrency === "XOF"
-      ? `${formattedNum} FCFA`
-      : `₦${formattedNum}`;
-  };
 
   const perTxPercent = Math.min(
     100,
@@ -254,10 +243,10 @@ export default function LimitsAndUsageScreen({
 
               <View className="items-end">
                 <Text className="text-sm font-bold text-[#1A1A1A]">
-                  {formatMoney(usage.largestSingleToday)}
+                  {formatMoney(usage.largestSingleToday, activeCurrency)}
                 </Text>
                 <Text className="text-[11px] text-[#666666] mt-0.5">
-                  of {formatMoney(limits.perTxLimit)}
+                  of {formatMoney(limits.perTxLimit, activeCurrency)}
                 </Text>
               </View>
             </View>
@@ -289,10 +278,10 @@ export default function LimitsAndUsageScreen({
 
               <View className="items-end">
                 <Text className="text-sm font-bold text-[#1A1A1A]">
-                  {formatMoney(usage.totalSentToday)}
+                  {formatMoney(usage.totalSentToday, activeCurrency)}
                 </Text>
                 <Text className="text-[11px] text-[#666666] mt-0.5">
-                  of {formatMoney(limits.dailyOutgoingLimit)}
+                  of {formatMoney(limits.dailyOutgoingLimit, activeCurrency)}
                 </Text>
               </View>
             </View>
@@ -324,12 +313,12 @@ export default function LimitsAndUsageScreen({
 
               <View className="items-end">
                 <Text className="text-sm font-bold text-[#1A1A1A]">
-                  {formatMoney(usage.currentBalance)}
+                  {formatMoney(usage.currentBalance, activeCurrency)}
                 </Text>
                 <Text className="text-[11px] text-[#666666] mt-0.5">
                   {limits.walletCap === null
                     ? "No limit"
-                    : `of ${formatMoney(limits.walletCap)}`}
+                    : `of ${formatMoney(limits.walletCap, activeCurrency)}`}
                 </Text>
               </View>
             </View>

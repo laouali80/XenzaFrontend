@@ -8,10 +8,19 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useTx } from "../../../../../../utils/tx";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-export type WalletCurrency = "XOF" | "NGN";
+import { useServicePayment } from "../../../../../../hooks/useServicePayment";
+import type { WalletCurrency } from "../../../../../../types/money";
+import { formatMoney, sanitizeDecimalInput } from "../../../../../../utils/money";
+import {
+  AIRTIME_PRESETS,
+} from "../../../../../../constants/servicePayment";
+import {
+  AmountPresets,
+  DailyLimitCard,
+  PaymentSummary,
+  ProviderBanner,
+} from "../../../../../../components/service-payment/ServicePaymentPrimitives";
 
 interface AirtimePaymentScreenProps {
   providerName?: string;
@@ -30,9 +39,6 @@ interface AirtimePaymentScreenProps {
   }) => void;
 }
 
-const XOF_PRESETS = [2000, 5000, 10000, 20000, 50000];
-const NGN_PRESETS = [100, 200, 500, 1000, 2000];
-
 export default function AirtimePaymentScreen({
   providerName = "Airtel Niger",
   currency = "XOF",
@@ -42,52 +48,37 @@ export default function AirtimePaymentScreen({
   onBack,
   onContinue,
 }: AirtimePaymentScreenProps) {
-  const tx = useTx();
-
   const isXof = currency === "XOF";
-  const presets = isXof ? XOF_PRESETS : NGN_PRESETS;
+  const presets = AIRTIME_PRESETS[currency];
 
   const [mobileNumber, setMobileNumber] = useState<string>("");
   const [rawAmount, setRawAmount] = useState<string>(isXof ? "2000" : "");
 
   // Defaults matching your two screenshots
-  const activeBalance = availableBalance ?? (isXof ? 267908.2 : 149496);
-  const activeDailyLimit = dailyLimit ?? (isXof ? 5000000 : 10000000);
-  const activeUsedToday = usedToday ?? (isXof ? 1309.8 : 0);
-
-  const formatMoney = (val: number) => {
-    const hasDecimals = val % 1 !== 0;
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: hasDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return isXof ? `${formattedNum} FCFA` : `₦${formattedNum}`;
-  };
-
   const numericAmount = parseFloat(rawAmount) || 0;
   const fee = 0; // 0 FCFA / ₦0 fee on airtime top-ups
-  const totalDebited = numericAmount + fee;
-
-  const remainingDailyLimit = Math.max(
-    0,
-    activeDailyLimit - activeUsedToday - totalDebited,
-  );
-  const limitUsedPercent = Math.min(
-    100,
-    ((activeUsedToday + totalDebited) / activeDailyLimit) * 100,
-  );
-
-  const isFormValid =
-    mobileNumber.trim().length >= 8 &&
-    numericAmount > 0 &&
-    totalDebited <= activeBalance &&
-    totalDebited <= activeDailyLimit - activeUsedToday;
+  const activeUsedToday = usedToday ?? (isXof ? 1309.8 : 0);
+  const {
+    activeBalance,
+    activeDailyLimit,
+    remainingDailyLimit,
+    limitUsedPercent,
+    totalDebited,
+    isFormValid,
+  } = useServicePayment({
+    currency,
+    amount: numericAmount,
+    fee,
+    availableBalance,
+    dailyLimit,
+    usedToday: activeUsedToday,
+    minimumRecipientLength: 8,
+    recipient: mobileNumber,
+  });
 
   const handleAmountChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9.]/g, "");
-    const parts = cleaned.split(".");
-    if (parts.length > 2) return;
-    setRawAmount(cleaned);
+    const cleaned = sanitizeDecimalInput(text);
+    if (cleaned !== null) setRawAmount(cleaned);
   };
 
   return (
@@ -122,17 +113,13 @@ export default function AirtimePaymentScreen({
           }}
         >
           {/* Selected Provider Summary Banner */}
-          <View className="bg-[#F6F3ED] border border-[#EAE5DC] rounded-2xl p-4 flex-row items-center mb-6">
-            <View className="w-11 h-11 rounded-xl bg-[#D1F2DF] items-center justify-center mr-3.5">
-              <Text className="text-lg text-[#008744]">📱</Text>
-            </View>
-            <View>
-              <Text className="text-[15px] font-bold text-[#1A1A1A]">
-                {providerName}
-              </Text>
-              <Text className="text-xs text-[#666666] mt-0.5">Airtime</Text>
-            </View>
-          </View>
+          <ProviderBanner
+            providerName={providerName}
+            serviceLabel="Airtime"
+            icon="📱"
+            iconContainerClassName="bg-[#D1F2DF]"
+            iconTextClassName="text-[#008744]"
+          />
 
           {/* MOBILE NUMBER Input */}
           <Text className="text-[11px] font-bold text-[#666666] tracking-[0.6px] mb-2">
@@ -171,90 +158,27 @@ export default function AirtimePaymentScreen({
           </View>
 
           {/* Quick Amount Preset Pills */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
-            className="mb-6"
-          >
-            {presets.map((preset) => {
-              const isSelected = numericAmount === preset;
-              return (
-                <TouchableOpacity
-                  key={preset}
-                  activeOpacity={0.8}
-                  onPress={() => setRawAmount(String(preset))}
-                  className={`px-3.5 py-2 rounded-full border ${
-                    isSelected
-                      ? "bg-[#E6F5EC] border-[#52B788]"
-                      : "bg-[#FAF8F5] border-[#E5E0D8]"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      isSelected ? "text-[#008744]" : "text-[#4A4A4A]"
-                    }`}
-                  >
-                    {preset.toLocaleString("en-US")}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          <AmountPresets
+            presets={presets}
+            amount={numericAmount}
+            onSelect={(preset) => setRawAmount(String(preset))}
+          />
 
           {/* Pay From, Fee & Total Debited Card */}
-          <View className="bg-[#FAF8F5] border border-[#EAE5DC] rounded-2xl p-4 gap-3 mb-4">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs text-[#666666]">Pay from</Text>
-              <Text className="text-xs font-bold text-[#1A1A1A]">
-                {currency} wallet
-              </Text>
-            </View>
-
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs text-[#666666]">Fee</Text>
-              <Text className="text-xs font-bold text-[#1A1A1A]">
-                {formatMoney(fee)}
-              </Text>
-            </View>
-
-            <View className="border-t border-[#E8E3D9] pt-3 flex-row items-center justify-between">
-              <Text className="text-sm font-semibold text-[#1A1A1A]">
-                Total debited
-              </Text>
-              <Text className="text-[15px] font-bold text-[#008744]">
-                {formatMoney(totalDebited)}
-              </Text>
-            </View>
-          </View>
+          <PaymentSummary
+            currency={currency}
+            fee={fee}
+            totalDebited={totalDebited}
+          />
 
           {/* Daily Limit Card */}
-          <View className="bg-[#FAF8F5] border border-[#EAE5DC] rounded-2xl p-4 mb-6">
-            <View className="flex-row items-center justify-between mb-2.5">
-              <View className="flex-row items-center">
-                <Text className="text-xs text-[#008744] mr-1.5">🛡️</Text>
-                <Text className="text-xs font-bold text-[#1A1A1A]">
-                  Daily limit
-                </Text>
-              </View>
-              <Text className="text-[11px] text-[#666666]">
-                {formatMoney(activeUsedToday)} of{" "}
-                {formatMoney(activeDailyLimit)} used today
-              </Text>
-            </View>
-
-            {/* Progress Bar */}
-            <View className="h-1.5 bg-[#E6E2DA] rounded-full overflow-hidden mb-2">
-              <View
-                style={{ width: `${limitUsedPercent}%` }}
-                className="h-full bg-[#009A49] rounded-full"
-              />
-            </View>
-
-            <Text className="text-[11px] text-[#666666]">
-              {formatMoney(remainingDailyLimit)} left today
-            </Text>
-          </View>
+          <DailyLimitCard
+            currency={currency}
+            usedToday={activeUsedToday}
+            dailyLimit={activeDailyLimit}
+            remaining={remainingDailyLimit}
+            percent={limitUsedPercent}
+          />
 
           {/* Insufficient Balance Warning */}
           {totalDebited > activeBalance && (
@@ -282,7 +206,7 @@ export default function AirtimePaymentScreen({
             }`}
           >
             <Text className="text-white text-base font-semibold">
-              {tx.screens.preAuthCTA.continueBtn}
+              Continue
             </Text>
           </TouchableOpacity>
         </ScrollView>

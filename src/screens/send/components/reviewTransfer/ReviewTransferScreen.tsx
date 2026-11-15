@@ -1,10 +1,11 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
-import { useTx } from "../../../../utils/tx";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { DetailRow } from "../../../../components/transaction/TransactionPrimitives";
+import type { WalletCurrency } from "../../../../types/money";
+import { formatMoney } from "../../../../utils/money";
 
 export type TransferMode = "xenza_user" | "bank_account";
-export type WalletCurrency = "XOF" | "NGN";
 
 interface ReviewTransferScreenProps {
   mode?: TransferMode;
@@ -31,16 +32,6 @@ export default function ReviewTransferScreen({
   onBack,
   onConfirm,
 }: ReviewTransferScreenProps) {
-  const tx = useTx();
-
-  const formatMoney = (val: number, forceDecimals = false) => {
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: forceDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return currency === "XOF" ? `${formattedNum} FCFA` : `₦${formattedNum}`;
-  };
-
   const isBankTransfer = mode === "bank_account";
 
   return (
@@ -73,7 +64,7 @@ export default function ReviewTransferScreen({
             Recipient gets
           </Text>
           <Text className="text-[32px] font-extrabold text-[#008744] mb-1.5">
-            {formatMoney(recipientGets, false)}
+            {formatMoney(recipientGets, currency)}
           </Text>
           <Text className="text-xs font-medium text-[#666666]">
             {recipientName}
@@ -83,48 +74,27 @@ export default function ReviewTransferScreen({
         {/* Details Breakdown Card */}
         <View className="bg-[#FAF8F5] border border-[#EAE5DC] rounded-2xl p-4 gap-3.5 mb-6">
           {/* Recipient Destination Row */}
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs text-[#666666]">
-              {isBankTransfer ? "To a bank account" : "To a Xenza user"}
-            </Text>
-            <Text className="text-xs font-bold text-[#1A1A1A]">
-              {accountOrPhone}
-            </Text>
-          </View>
+          <DetailRow
+            label={isBankTransfer ? "To a bank account" : "To a Xenza user"}
+            value={accountOrPhone}
+          />
 
           {/* Conditional Bank Name Row (Only shown for Bank Transfers) */}
           {isBankTransfer && (
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs text-[#666666]">Bank</Text>
-              <Text className="text-xs font-bold text-[#1A1A1A]">
-                {bankName}
-              </Text>
-            </View>
+            <DetailRow label="Bank" value={bankName} />
           )}
 
           {/* Source Wallet Row */}
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs text-[#666666]">Send from</Text>
-            <Text className="text-xs font-bold text-[#1A1A1A]">
-              {currency} wallet
-            </Text>
-          </View>
+          <DetailRow label="Send from" value={`${currency} wallet`} />
 
           {/* Fee Row */}
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs text-[#666666]">Fee</Text>
-            <Text className="text-xs font-bold text-[#1A1A1A]">
-              {formatMoney(fee, true)}
-            </Text>
-          </View>
+          <DetailRow label="Fee" value={formatMoney(fee, currency, true)} />
 
           {/* Total Debited Row */}
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs text-[#666666]">Total debited</Text>
-            <Text className="text-xs font-bold text-[#1A1A1A]">
-              {formatMoney(totalDebited, true)}
-            </Text>
-          </View>
+          <DetailRow
+            label="Total debited"
+            value={formatMoney(totalDebited, currency, true)}
+          />
         </View>
 
         {/* Confirm Transfer Button */}
