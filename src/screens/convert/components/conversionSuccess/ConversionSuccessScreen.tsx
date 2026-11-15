@@ -1,8 +1,13 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-export type WalletCurrency = "XOF" | "NGN";
+import {
+  SuccessBadge,
+  TransactionAction,
+  TransactionSummaryCard,
+} from "../../../../components/transaction/TransactionPrimitives";
+import type { WalletCurrency } from "../../../../types/money";
+import { formatMoney } from "../../../../utils/money";
 
 interface ConversionSuccessScreenProps {
   fromCurrency?: WalletCurrency;
@@ -32,23 +37,11 @@ export default function ConversionSuccessScreen({
   // Default rate multiplier matching both corridor directions
   const activeRate = rateMultiplier ?? (isXofToNgn ? 2.4 : 0.42);
 
-  const formatMoney = (val: number, currency: WalletCurrency) => {
-    const hasDecimals = val % 1 !== 0;
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: hasDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return currency === "XOF" ? `${formattedNum} FCFA` : `₦${formattedNum}`;
-  };
-
   // Formats "+₦2,400" (XOF -> NGN) or "+420 FCFA" (NGN -> XOF)
   const creditedHeroText = `+${formatMoney(amountReceived, toCurrency)}`;
 
   // Formats "1,000 FCFA · 2.40 rate" or "₦1,000 · 0.42 rate"
-  const conversionRateDetail = `${formatMoney(
-    amountConverted,
-    fromCurrency,
-  )} · ${activeRate.toFixed(2)} rate`;
+  const conversionRateDetail = `${formatMoney(amountConverted, fromCurrency)} · ${activeRate.toFixed(2)} rate`;
 
   return (
     <SafeAreaView className="flex-1 bg-[#FCFAF7]">
@@ -68,13 +61,7 @@ export default function ConversionSuccessScreen({
         }}
       >
         {/* Top Green Checkmark Badge */}
-        <View className="items-center mb-5">
-          <View className="w-[72px] h-[72px] rounded-full bg-[#C7F0D8] items-center justify-center">
-            <View className="w-10 h-10 rounded-full bg-[#008744] items-center justify-center">
-              <Text className="text-white font-bold text-lg">✓</Text>
-            </View>
-          </View>
-        </View>
+        <SuccessBadge />
 
         {/* Title & Subtitle */}
         <Text className="text-[26px] font-bold text-[#1A1A1A] text-center mb-1.5">
@@ -85,45 +72,26 @@ export default function ConversionSuccessScreen({
         </Text>
 
         {/* Credited Amount Summary Card */}
-        <View className="bg-[#F6F3ED] border border-[#EAE5DC] rounded-2xl py-6 px-5 items-center mb-6">
-          <Text className="text-[28px] font-extrabold text-[#1A1A1A] mb-2">
-            {creditedHeroText}
-          </Text>
-
-          <Text className="text-xs font-medium text-[#555555] mb-3.5">
-            {conversionRateDetail}
-          </Text>
-
-          <Text className="text-[11px] font-medium text-[#888888] tracking-wide">
-            Ref {referenceId}
-          </Text>
-        </View>
+        <TransactionSummaryCard
+          amount={creditedHeroText}
+          details={[conversionRateDetail]}
+          referenceId={referenceId}
+        />
 
         {/* Primary Action: View Activity */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={
-            onViewActivity ?? (() => console.log("Navigate to Activity"))
-          }
-          className="bg-[#009A49] h-[54px] rounded-xl flex-row items-center justify-center mb-3"
-        >
-          <Text className="text-white text-sm mr-2">🕒</Text>
-          <Text className="text-white text-base font-semibold">
-            View activity
-          </Text>
-        </TouchableOpacity>
+        <TransactionAction
+          label="View activity"
+          icon="🕒"
+          onPress={onViewActivity}
+        />
 
         {/* Secondary Action: Convert Again */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={onConvertAgain ?? (() => console.log("Reset Convert flow"))}
-          className="bg-white border border-[#E0DCD3] h-[54px] rounded-xl flex-row items-center justify-center mb-5"
-        >
-          <Text className="text-[#1A1A1A] text-sm mr-2">⊕</Text>
-          <Text className="text-[#1A1A1A] text-base font-semibold">
-            Convert again
-          </Text>
-        </TouchableOpacity>
+        <TransactionAction
+          label="Convert again"
+          icon="⊕"
+          onPress={onConvertAgain}
+          secondary
+        />
 
         {/* Tertiary Link: Back to Home */}
         <TouchableOpacity
