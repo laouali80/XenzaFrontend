@@ -8,10 +8,16 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useTx } from "../../../../../../utils/tx";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  DailyLimitCard,
+  PaymentSummary,
+  ProviderBanner,
+} from "../../../../../../components/service-payment/ServicePaymentPrimitives";
+import { useServicePayment } from "../../../../../../hooks/useServicePayment";
+import type { WalletCurrency } from "../../../../../../types/money";
+import { formatMoney } from "../../../../../../utils/money";
 
-export type WalletCurrency = "XOF" | "NGN";
 export type PlanDurationTab = "daily" | "weekly" | "monthly";
 
 export interface DataPlanItem {
@@ -201,8 +207,6 @@ export default function DataBundlePaymentScreen({
   onBack,
   onContinue,
 }: DataBundlePaymentScreenProps) {
-  const tx = useTx();
-
   const isXof = currency === "XOF";
 
   const [mobileNumber, setMobileNumber] = useState<string>("");
@@ -231,36 +235,27 @@ export default function DataBundlePaymentScreen({
   );
 
   // Defaults matching your screenshot
-  const activeBalance = availableBalance ?? (isXof ? 267908.2 : 149496);
-  const activeDailyLimit = dailyLimit ?? (isXof ? 5000000 : 10000000);
   const activeUsedToday = usedToday ?? (isXof ? 1309.8 : 43);
 
-  const formatMoney = (val: number) => {
-    const hasDecimals = val % 1 !== 0;
-    const formattedNum = val.toLocaleString("en-US", {
-      minimumFractionDigits: hasDecimals ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
-    return isXof ? `${formattedNum} FCFA` : `₦${formattedNum}`;
-  };
-
   const fee = 0;
-  const totalDebited = (activePlan?.price || 0) + fee;
-
-  const remainingDailyLimit = Math.max(
-    0,
-    activeDailyLimit - activeUsedToday - totalDebited,
-  );
-  const limitUsedPercent = Math.min(
-    100,
-    ((activeUsedToday + totalDebited) / activeDailyLimit) * 100,
-  );
-
-  const isFormValid =
-    mobileNumber.trim().length >= 8 &&
-    Boolean(activePlan) &&
-    totalDebited <= activeBalance &&
-    totalDebited <= activeDailyLimit - activeUsedToday;
+  const {
+    activeBalance,
+    activeDailyLimit,
+    remainingDailyLimit,
+    limitUsedPercent,
+    totalDebited,
+    isFormValid,
+  } = useServicePayment({
+    currency,
+    amount: activePlan?.price || 0,
+    fee,
+    availableBalance,
+    dailyLimit,
+    usedToday: activeUsedToday,
+    minimumRecipientLength: 8,
+    recipient: mobileNumber,
+    hasSelection: Boolean(activePlan),
+  });
 
   const durationTabs: { id: PlanDurationTab; label: string }[] = [
     { id: "daily", label: "Daily" },
@@ -300,19 +295,13 @@ export default function DataBundlePaymentScreen({
           }}
         >
           {/* Selected Provider Summary Banner */}
-          <View className="bg-[#F6F3ED] border border-[#EAE5DC] rounded-2xl p-4 flex-row items-center mb-6">
-            <View className="w-11 h-11 rounded-xl bg-[#D6F1F5] items-center justify-center mr-3.5">
-              <Text className="text-lg text-[#167A8C]">📶</Text>
-            </View>
-            <View>
-              <Text className="text-[15px] font-bold text-[#1A1A1A]">
-                {providerName}
-              </Text>
-              <Text className="text-xs text-[#666666] mt-0.5">
-                Data bundles
-              </Text>
-            </View>
-          </View>
+          <ProviderBanner
+            providerName={providerName}
+            serviceLabel="Data bundles"
+            icon="📶"
+            iconContainerClassName="bg-[#D6F1F5]"
+            iconTextClassName="text-[#167A8C]"
+          />
 
           {/* MOBILE NUMBER Input */}
           <Text className="text-[11px] font-bold text-[#666666] tracking-[0.6px] mb-2">
@@ -394,66 +383,26 @@ export default function DataBundlePaymentScreen({
                   </View>
 
                   <Text className="text-[15px] font-bold text-[#1A1A1A]">
-                    {formatMoney(plan.price)}
+                    {formatMoney(plan.price, currency)}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          {/* Pay From, Fee & Total Debited Card */}
-          <View className="bg-[#FAF8F5] border border-[#EAE5DC] rounded-2xl p-4 gap-3 mb-4">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs text-[#666666]">Pay from</Text>
-              <Text className="text-xs font-bold text-[#1A1A1A]">
-                {currency} wallet
-              </Text>
-            </View>
+          <PaymentSummary
+            currency={currency}
+            fee={fee}
+            totalDebited={totalDebited}
+          />
 
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs text-[#666666]">Fee</Text>
-              <Text className="text-xs font-bold text-[#1A1A1A]">
-                {formatMoney(fee)}
-              </Text>
-            </View>
-
-            <View className="border-t border-[#E8E3D9] pt-3 flex-row items-center justify-between">
-              <Text className="text-sm font-semibold text-[#1A1A1A]">
-                Total debited
-              </Text>
-              <Text className="text-[15px] font-bold text-[#008744]">
-                {formatMoney(totalDebited)}
-              </Text>
-            </View>
-          </View>
-
-          {/* Daily Limit Card */}
-          <View className="bg-[#FAF8F5] border border-[#EAE5DC] rounded-2xl p-4 mb-6">
-            <View className="flex-row items-center justify-between mb-2.5">
-              <View className="flex-row items-center">
-                <Text className="text-xs text-[#008744] mr-1.5">🛡️</Text>
-                <Text className="text-xs font-bold text-[#1A1A1A]">
-                  Daily limit
-                </Text>
-              </View>
-              <Text className="text-[11px] text-[#666666]">
-                {formatMoney(activeUsedToday)} of{" "}
-                {formatMoney(activeDailyLimit)} used today
-              </Text>
-            </View>
-
-            {/* Progress Bar */}
-            <View className="h-1.5 bg-[#E6E2DA] rounded-full overflow-hidden mb-2">
-              <View
-                style={{ width: `${limitUsedPercent}%` }}
-                className="h-full bg-[#009A49] rounded-full"
-              />
-            </View>
-
-            <Text className="text-[11px] text-[#666666]">
-              {formatMoney(remainingDailyLimit)} left today
-            </Text>
-          </View>
+          <DailyLimitCard
+            currency={currency}
+            usedToday={activeUsedToday}
+            dailyLimit={activeDailyLimit}
+            remaining={remainingDailyLimit}
+            percent={limitUsedPercent}
+          />
 
           {/* Insufficient Balance Warning */}
           {totalDebited > activeBalance && (
@@ -482,7 +431,7 @@ export default function DataBundlePaymentScreen({
             }`}
           >
             <Text className="text-white text-base font-semibold">
-              {tx.screens.preAuthCTA.continueBtn}
+              Continue
             </Text>
           </TouchableOpacity>
         </ScrollView>
