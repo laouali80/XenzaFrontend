@@ -2,8 +2,7 @@ import React, { useState, useMemo } from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useTx } from "../../utils/tx";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-export type WalletCurrency = "XOF" | "NGN";
+import type { WalletCurrency } from "../../types/money";
 
 export interface UserWallet {
   id: string;
