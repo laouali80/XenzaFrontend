@@ -1,23 +1,20 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Platform, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { AuthStackParamList } from "@/types/navigation/navigation.type";
-import GetStartedScreen from "@/screens/Welcomes/GetStartedScreen";
-import OTPScreen from "@/screens/Welcomes/OTPScreen";
-import { COLORS } from "@/constants/COLORS";
+import OnboardingScreen from "../screens/onboarding/onboardingScreen";
 
-const Stack = createNativeStackNavigator<AuthStackParamList, "AuthStack">();
+const Stack = createNativeStackNavigator();
 
 export default function AuthNavigator() {
   return (
     <Stack.Navigator id="AuthStack">
       <Stack.Screen
-        name="GetStarted"
-        component={GetStartedScreen}
+        name="Onboarding"
+        component={OnboardingScreen}
         options={{ headerShown: false }}
       />
 
-      <Stack.Screen
+      {/* <Stack.Screen
         name="OTP"
         component={OTPScreen}
         options={({ navigation }) => ({
@@ -34,7 +31,7 @@ export default function AuthNavigator() {
             </TouchableOpacity>
           ),
         })}
-      />
+      /> */}
     </Stack.Navigator>
   );
 }
